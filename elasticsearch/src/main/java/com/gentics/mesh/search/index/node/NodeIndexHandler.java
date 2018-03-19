@@ -18,6 +18,7 @@ import javax.inject.Singleton;
 import com.gentics.mesh.cli.BootstrapInitializer;
 import com.gentics.mesh.context.InternalActionContext;
 import com.gentics.mesh.core.data.ContainerType;
+import com.gentics.mesh.core.data.IndexableElement;
 import com.gentics.mesh.core.data.NodeGraphFieldContainer;
 import com.gentics.mesh.core.data.Project;
 import com.gentics.mesh.core.data.Release;
@@ -376,6 +377,10 @@ public class NodeIndexHandler extends AbstractIndexHandler<Node> {
 		IndexInfo info = new IndexInfo("validationDummy", settings, mapping);
 		JsonObject fullSettings = searchProvider.createIndexSettings(info);
 		return fullSettings;
+	}
+
+	public String generateVersion(NodeGraphFieldContainer container, String releaseUuid, ContainerType type) {
+		return getTransformer().generateVersion(container, releaseUuid, type);
 	}
 
 }

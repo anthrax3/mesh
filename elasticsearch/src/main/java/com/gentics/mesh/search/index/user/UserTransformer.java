@@ -36,6 +36,7 @@ public class UserTransformer extends AbstractTransformer<User> {
 	public UserTransformer() {
 	}
 
+	@Override
 	public String generateVersion(User user) {
 		return ETag.hash(toDocument(user, false).encode());
 	}

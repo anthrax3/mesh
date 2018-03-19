@@ -119,4 +119,12 @@ public interface IndexHandler<T extends MeshCoreVertex<?, T>> {
 	 */
 	Completable updatePermission(UpdateDocumentEntry entry);
 
+	/**
+	 * Generate the version for the given element.
+	 * 
+	 * @param element
+	 * @return
+	 */
+	String generateVersion(T element);
+
 }

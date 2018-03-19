@@ -23,9 +23,9 @@ import com.gentics.mesh.search.index.MappingProvider;
 import com.gentics.mesh.search.index.Transformer;
 import com.syncleus.ferma.tx.Tx;
 
+import io.reactivex.Completable;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.reactivex.Completable;
 
 /**
  * Abstract class for index handlers.
@@ -211,6 +211,11 @@ public abstract class AbstractIndexHandler<T extends MeshCoreVertex<?, T>> imple
 	@Override
 	public boolean accepts(Class<?> clazzOfElement) {
 		return getElementClass().isAssignableFrom(clazzOfElement);
+	}
+
+	@Override
+	public String generateVersion(T element) {
+		return getTransformer().generateVersion(element);
 	}
 
 }

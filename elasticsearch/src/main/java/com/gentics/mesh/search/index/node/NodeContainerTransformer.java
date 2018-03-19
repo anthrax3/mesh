@@ -417,6 +417,15 @@ public class NodeContainerTransformer extends AbstractTransformer<NodeGraphField
 	}
 
 	/**
+	 * @deprecated Use generateVersion(container, releaseUuid) instead
+	 */
+	@Override
+	@Deprecated
+	public String generateVersion(NodeGraphFieldContainer element) {
+		throw new NotImplementedException("Use generateVersion(container, releaseUuid) instead");
+	}
+
+	/**
 	 * Transform the role to the document which can be stored in ES.
 	 * 
 	 * @param container
@@ -477,5 +486,7 @@ public class NodeContainerTransformer extends AbstractTransformer<NodeGraphField
 	public JsonObject toDocument(NodeGraphFieldContainer container, String releaseUuid, ContainerType type) {
 		return toDocument(container, releaseUuid, type, true);
 	}
+	
+	
 
 }
