@@ -154,6 +154,37 @@ public abstract class AbstractIndexHandler<T extends MeshCoreVertex<?, T>> imple
 
 	@Override
 	public Completable reindexAll() {
+		
+//		// JsonObject doc = provider.getDocument(User.composeIndexName(), userUuid()).blockingGet();
+//		// System.out.println(doc.encodePrettily());
+//
+//		SearchClient client = provider.getClient();
+//		JsonObject query = new JsonObject();
+//		query.put("size", 4);
+//		query.put("_source", new JsonArray().add("uuid").add("version"));
+//		query.put("query", new JsonObject().put("match_all", new JsonObject()));
+//		query.put("sort", new JsonArray().add("_doc"));
+//
+//		// System.out.println(query.encodePrettily());
+//		RequestBuilder<JsonObject> builder = client.searchScroll(query, "1m", User.composeIndexName());
+//		JsonObject result = builder.sync();
+//		String scrollId = result.getString("_scroll_id");
+//		System.out.println(result.encodePrettily());
+//		System.out.println(scrollId);
+//		JsonObject result2 = client.scroll(scrollId, "1m").sync();
+//		System.out.println("----------");
+//		System.out.println(result2.encodePrettily());
+//		IndexHandler<?> indexHandler = MeshInternal.get().indexHandlerRegistry().getForClass(User.class);
+//		UserIndexHandler userIndexHandler = (UserIndexHandler) indexHandler;
+//		try (Tx tx = tx()) {
+//			for (User user : boot().userRoot().findAllIt()) {
+//				System.out.println("---------");
+//				System.out.println(userIndexHandler.generateVersion(user));
+//				System.out.println(user.getElementVersion());
+//			}
+//		}
+
+		
 		return Completable.defer(() -> {
 			log.info("Handling full reindex entry");
 			SearchQueueBatch batch = searchQueue.create();
