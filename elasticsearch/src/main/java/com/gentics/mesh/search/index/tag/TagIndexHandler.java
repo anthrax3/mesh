@@ -2,6 +2,7 @@ package com.gentics.mesh.search.index.tag;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -10,6 +11,7 @@ import javax.inject.Singleton;
 
 import com.gentics.mesh.cli.BootstrapInitializer;
 import com.gentics.mesh.context.InternalActionContext;
+import com.gentics.mesh.core.data.Group;
 import com.gentics.mesh.core.data.Project;
 import com.gentics.mesh.core.data.Tag;
 import com.gentics.mesh.core.data.root.ProjectRoot;
@@ -87,6 +89,21 @@ public class TagIndexHandler extends AbstractIndexHandler<Tag> {
 				indexInfo.put(indexName, info);
 			}
 			return indexInfo;
+		});
+	}
+
+	@Override
+	public Completable syncIndices() {
+		return Completable.defer(() -> {
+			return db.tx(() -> {
+				ProjectRoot root = boot.meshRoot().getProjectRoot();
+				Set<Completable> actions = new HashSet<>();
+				for (Project project : root.findAllIt()) {
+					actions.add(diffAndSync(Tag.composeIndexName(project.getUuid())));
+				}
+
+				return Completable.merge(actions);
+			});
 		});
 	}
 

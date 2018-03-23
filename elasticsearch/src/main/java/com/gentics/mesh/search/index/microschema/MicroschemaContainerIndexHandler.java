@@ -18,6 +18,8 @@ import com.gentics.mesh.graphdb.spi.Database;
 import com.gentics.mesh.search.SearchProvider;
 import com.gentics.mesh.search.index.entry.AbstractIndexHandler;
 
+import io.reactivex.Completable;
+
 /**
  * Handler for the elastic search microschema index.
  */
@@ -58,6 +60,13 @@ public class MicroschemaContainerIndexHandler extends AbstractIndexHandler<Micro
 	@Override
 	public MicroschemaMappingProvider getMappingProvider() {
 		return mappingProvider;
+	}
+
+	@Override
+	public Completable syncIndices() {
+		return Completable.defer(() -> {
+			return diffAndSync(MicroschemaContainer.composeIndexName());
+		});
 	}
 
 	@Override

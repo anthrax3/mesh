@@ -59,11 +59,11 @@ public interface IndexHandler<T extends MeshCoreVertex<?, T>> {
 	Completable store(UpdateDocumentEntry entry);
 
 	/**
-	 * Reindex all documents for the type which the handler is capable of.
+	 * Diff the elements within all indices that are handled by the index handler and synchronize the data.
 	 * 
 	 * @return
 	 */
-	Completable reindexAll();
+	Completable syncIndices();
 
 	/**
 	 * Load a map which contains the applicable indices. The key of the map is the index name.

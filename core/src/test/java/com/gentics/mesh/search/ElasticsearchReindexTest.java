@@ -21,6 +21,7 @@ public class ElasticsearchReindexTest extends AbstractMeshTest {
 	@Test
 	public void testReindex() throws Exception {
 		ElasticSearchProvider provider = getProvider();
+		provider.clear().blockingAwait();
 
 		tx(() -> {
 			for (int i = 0; i < 400; i++) {
@@ -33,6 +34,8 @@ public class ElasticsearchReindexTest extends AbstractMeshTest {
 		}
 
 		//call(() -> client().invokeReindex());
+		provider.invokeReindex().blockingAwait();
+		System.out.println("--------------");
 		provider.invokeReindex().blockingAwait();
 	}
 }

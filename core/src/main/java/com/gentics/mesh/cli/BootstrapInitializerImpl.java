@@ -157,7 +157,7 @@ public class BootstrapInitializerImpl implements BootstrapInitializer {
 			log.info("Invoking reindex on handler {" + handlerName + "}. This may take some time..");
 			handler.init().blockingAwait();
 			try (Tx tx = db.tx()) {
-				handler.reindexAll().blockingAwait();
+				handler.syncIndices().blockingAwait();
 			}
 			log.info("Reindex on handler {" + handlerName + "} completed.");
 		}

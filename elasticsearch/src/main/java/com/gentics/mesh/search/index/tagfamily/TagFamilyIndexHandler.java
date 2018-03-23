@@ -2,6 +2,7 @@ package com.gentics.mesh.search.index.tagfamily;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -79,6 +80,22 @@ public class TagFamilyIndexHandler extends AbstractIndexHandler<TagFamily> {
 				indexInfo.put(indexName, info);
 			}
 			return indexInfo;
+		});
+	}
+
+	@Override
+	public Completable syncIndices() {
+		return Completable.defer(() -> {
+			return db.tx(() -> {
+				ProjectRoot root = boot.meshRoot().getProjectRoot();
+				Set<Completable> actions = new HashSet<>();
+				for (Project project : root.findAllIt()) {
+					String indexName = TagFamily.composeIndexName(project.getUuid());
+					actions.add(diffAndSync(indexName));
+				}
+
+				return Completable.merge(actions);
+			});
 		});
 	}
 

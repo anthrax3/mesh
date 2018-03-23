@@ -23,7 +23,6 @@ public class SearchClient extends ElasticsearchOkClient<JsonObject> {
 		JsonObject request = new JsonObject();
 		request.put("scroll", scrollTimeout);
 		request.put("scroll_id", scrollId);
-		System.out.println(request.encodePrettily());
 		return postBuilder("_search/scroll", request);
 	}
 

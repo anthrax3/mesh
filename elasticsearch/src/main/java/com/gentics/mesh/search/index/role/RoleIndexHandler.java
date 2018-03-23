@@ -19,6 +19,8 @@ import com.gentics.mesh.search.SearchProvider;
 import com.gentics.mesh.search.index.MappingProvider;
 import com.gentics.mesh.search.index.entry.AbstractIndexHandler;
 
+import io.reactivex.Completable;
+
 /**
  * Handler for the elasticsearch role index.
  */
@@ -66,6 +68,13 @@ public class RoleIndexHandler extends AbstractIndexHandler<Role> {
 		String indexName = Role.composeIndexName();
 		IndexInfo info = new IndexInfo(indexName, null, getMappingProvider().getMapping());
 		return Collections.singletonMap(indexName, info);
+	}
+
+	@Override
+	public Completable syncIndices() {
+		return Completable.defer(() -> {
+			return diffAndSync(Role.composeIndexName());
+		});
 	}
 
 	@Override

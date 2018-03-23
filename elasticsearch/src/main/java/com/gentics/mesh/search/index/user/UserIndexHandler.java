@@ -19,6 +19,8 @@ import com.gentics.mesh.search.SearchProvider;
 import com.gentics.mesh.search.index.MappingProvider;
 import com.gentics.mesh.search.index.entry.AbstractIndexHandler;
 
+import io.reactivex.Completable;
+
 @Singleton
 public class UserIndexHandler extends AbstractIndexHandler<User> {
 
@@ -58,6 +60,13 @@ public class UserIndexHandler extends AbstractIndexHandler<User> {
 	@Override
 	protected MappingProvider getMappingProvider() {
 		return mappingProvider;
+	}
+
+	@Override
+	public Completable syncIndices() {
+		return Completable.defer(() -> {
+			return diffAndSync(User.composeIndexName());
+		});
 	}
 
 	@Override

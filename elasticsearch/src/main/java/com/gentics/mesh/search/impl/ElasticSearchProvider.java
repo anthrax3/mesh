@@ -474,7 +474,7 @@ public class ElasticSearchProvider implements SearchProvider {
 	@Override
 	public Completable invokeReindex() {
 		return Observable.fromIterable(registry.get().getHandlers())
-			.flatMapCompletable(handler -> handler.init().andThen(handler.reindexAll()))
+			.flatMapCompletable(handler -> handler.init().andThen(handler.syncIndices()))
 			.andThen(refreshIndex());
 	}
 

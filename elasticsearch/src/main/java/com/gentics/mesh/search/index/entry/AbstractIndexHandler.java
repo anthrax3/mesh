@@ -1,29 +1,39 @@
 package com.gentics.mesh.search.index.entry;
 
+import static com.gentics.mesh.core.data.search.SearchQueueEntryAction.DELETE_ACTION;
+import static com.gentics.mesh.core.data.search.SearchQueueEntryAction.STORE_ACTION;
 import static com.gentics.mesh.core.rest.error.Errors.error;
 import static com.gentics.mesh.search.SearchProvider.DEFAULT_TYPE;
 import static io.netty.handler.codec.http.HttpResponseStatus.INTERNAL_SERVER_ERROR;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import com.gentics.elasticsearch.client.HttpErrorException;
+import com.gentics.elasticsearch.client.okhttp.RequestBuilder;
 import com.gentics.mesh.cli.BootstrapInitializer;
-import com.gentics.mesh.core.data.IndexableElement;
 import com.gentics.mesh.core.data.MeshCoreVertex;
 import com.gentics.mesh.core.data.search.CreateIndexEntry;
 import com.gentics.mesh.core.data.search.IndexHandler;
 import com.gentics.mesh.core.data.search.SearchQueue;
 import com.gentics.mesh.core.data.search.SearchQueueBatch;
 import com.gentics.mesh.core.data.search.UpdateDocumentEntry;
+import com.gentics.mesh.core.data.search.context.GenericEntryContext;
 import com.gentics.mesh.core.data.search.index.IndexInfo;
 import com.gentics.mesh.graphdb.spi.Database;
 import com.gentics.mesh.search.SearchProvider;
+import com.gentics.mesh.search.impl.SearchClient;
 import com.gentics.mesh.search.index.MappingProvider;
 import com.gentics.mesh.search.index.Transformer;
+import com.google.common.collect.MapDifference;
+import com.google.common.collect.Maps;
 import com.syncleus.ferma.tx.Tx;
 
 import io.reactivex.Completable;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
@@ -38,13 +48,15 @@ public abstract class AbstractIndexHandler<T extends MeshCoreVertex<?, T>> imple
 
 	private static final Logger log = LoggerFactory.getLogger(AbstractIndexHandler.class);
 
+	public static final int ES_SYNC_FETCH_BATCH_SIZE = 1000;
+
 	protected SearchProvider searchProvider;
 
 	protected Database db;
 
 	protected BootstrapInitializer boot;
 
-	private SearchQueue searchQueue;
+	protected SearchQueue searchQueue;
 
 	public AbstractIndexHandler(SearchProvider searchProvider, Database db, BootstrapInitializer boot, SearchQueue searchQueue) {
 		this.searchProvider = searchProvider;
@@ -152,56 +164,125 @@ public abstract class AbstractIndexHandler<T extends MeshCoreVertex<?, T>> imple
 		return searchProvider != null;
 	}
 
-	@Override
-	public Completable reindexAll() {
-		
-//		// JsonObject doc = provider.getDocument(User.composeIndexName(), userUuid()).blockingGet();
-//		// System.out.println(doc.encodePrettily());
-//
-//		SearchClient client = provider.getClient();
-//		JsonObject query = new JsonObject();
-//		query.put("size", 4);
-//		query.put("_source", new JsonArray().add("uuid").add("version"));
-//		query.put("query", new JsonObject().put("match_all", new JsonObject()));
-//		query.put("sort", new JsonArray().add("_doc"));
-//
-//		// System.out.println(query.encodePrettily());
-//		RequestBuilder<JsonObject> builder = client.searchScroll(query, "1m", User.composeIndexName());
-//		JsonObject result = builder.sync();
-//		String scrollId = result.getString("_scroll_id");
-//		System.out.println(result.encodePrettily());
-//		System.out.println(scrollId);
-//		JsonObject result2 = client.scroll(scrollId, "1m").sync();
-//		System.out.println("----------");
-//		System.out.println(result2.encodePrettily());
-//		IndexHandler<?> indexHandler = MeshInternal.get().indexHandlerRegistry().getForClass(User.class);
-//		UserIndexHandler userIndexHandler = (UserIndexHandler) indexHandler;
-//		try (Tx tx = tx()) {
-//			for (User user : boot().userRoot().findAllIt()) {
-//				System.out.println("---------");
-//				System.out.println(userIndexHandler.generateVersion(user));
-//				System.out.println(user.getElementVersion());
-//			}
-//		}
+	/**
+	 * Diff the source (graph) with the sink (ES index) and create {@link SearchQueueBatch} objects add, delete or update entries.
+	 * 
+	 * @param indexName
+	 * @return
+	 * @throws HttpErrorException
+	 */
+	protected Completable diffAndSync(String indexName) throws HttpErrorException {
 
-		
-		return Completable.defer(() -> {
-			log.info("Handling full reindex entry");
-			SearchQueueBatch batch = searchQueue.create();
-			// Add all elements from the root vertex of the handler to the created batch
-			try (Tx tx = db.tx()) {
-				for (T element : getRootVertex().findAllIt()) {
-					if (element instanceof IndexableElement) {
-						IndexableElement indexableElement = (IndexableElement) element;
-						log.info("Invoking reindex in handler {" + getClass().getName() + "} for element {" + indexableElement.getUuid() + "}");
-						batch.store(indexableElement, false);
-					} else {
-						log.info("Found element {" + element.getUuid() + "} is not indexable. Ignoring element.");
-					}
-				}
-				return batch.processAsync();
+		log.info("Handling reindex on handler {" + getClass().getName() + "}");
+
+		try (Tx tx = db.tx()) {
+			// 1. Load versions from the local graph (source of truth)
+			Map<String, String> sourceVersions = loadVersionsFromGraph();
+
+			// 2. Load the version from the elasticsearch index (sink)
+			Map<String, String> sinkVersions = loadVersionsFromIndex(indexName);
+
+			// 3. Diff the maps
+			MapDifference<String, String> diff = Maps.difference(sourceVersions, sinkVersions);
+			if (diff.areEqual()) {
+				return Completable.complete();
 			}
-		});
+			Set<String> needInsertionInES = diff.entriesOnlyOnLeft().keySet();
+			Set<String> needRemovalInES = diff.entriesOnlyOnRight().keySet();
+			Set<String> needUpdate = diff.entriesDiffering().keySet();
+
+			// 4. Create the SQB's
+			SearchQueueBatch storeBatch = searchQueue.create();
+			for (String uuid : needInsertionInES) {
+				UpdateDocumentEntry entry = new UpdateDocumentEntryImpl(this, uuid, null, STORE_ACTION);
+				storeBatch.addEntry(entry);
+			}
+			SearchQueueBatch removalBatch = searchQueue.create();
+			for (String uuid : needRemovalInES) {
+				GenericEntryContext context = null;
+				UpdateDocumentEntry entry = new UpdateDocumentEntryImpl(this, uuid, context, DELETE_ACTION);
+				removalBatch.addEntry(entry);
+			}
+			SearchQueueBatch updateBatch = searchQueue.create();
+			for (String uuid : needUpdate) {
+				UpdateDocumentEntry entry = new UpdateDocumentEntryImpl(this, uuid, null, STORE_ACTION);
+				removalBatch.addEntry(entry);
+			}
+
+			// 5. Process the SQB's
+			return Completable.mergeArray(removalBatch.processAsync(), storeBatch.processAsync(), updateBatch.processAsync());
+
+		}
+	}
+
+	private Map<String, String> loadVersionsFromGraph() {
+		Map<String, String> versions = new HashMap<>();
+		for (T element : getRootVertex().findAllIt()) {
+			String v = generateVersion(element);
+			versions.put(element.getUuid(), v);
+		}
+		return versions;
+	}
+
+	public Map<String, String> loadVersionsFromIndex(String indexName) throws HttpErrorException {
+		Map<String, String> versions = new HashMap<>();
+		log.debug("Loading document info from index {" + indexName + "}");
+		SearchClient client = searchProvider.getClient();
+		JsonObject query = new JsonObject();
+		query.put("size", ES_SYNC_FETCH_BATCH_SIZE);
+		query.put("_source", new JsonArray().add("uuid").add("version"));
+		query.put("query", new JsonObject().put("match_all", new JsonObject()));
+		query.put("sort", new JsonArray().add("_doc"));
+
+		RequestBuilder<JsonObject> builder = client.searchScroll(query, "1m", indexName);
+		JsonObject result = builder.sync();
+		if (log.isTraceEnabled()) {
+			log.trace("Got response {" + result.encodePrettily() + "}");
+		}
+		JsonArray hits = result.getJsonObject("hits").getJsonArray("hits");
+		processHits(hits, versions);
+
+		// Check whether we need to process more scrolls
+		if (hits.size() != 0) {
+			String nextScrollId = result.getString("_scroll_id");
+			while (true) {
+				final String currentScroll = nextScrollId;
+				log.debug("Fetching scroll result using scrollId {" + currentScroll + "}");
+				try {
+					JsonObject scrollResult = client.scroll(currentScroll, "1m").sync();
+					JsonArray scrollHits = scrollResult.getJsonObject("hits").getJsonArray("hits");
+					if (log.isTraceEnabled()) {
+						log.trace("Got response {" + scrollHits.encodePrettily() + "}");
+					}
+					if (scrollHits.size() != 0) {
+						processHits(scrollHits, versions);
+						// Update the scrollId for the next fetch
+						nextScrollId = scrollResult.getString("_scroll_id");
+						if (log.isDebugEnabled()) {
+							log.debug("Using scrollId {" + nextScrollId + "} for next fetch.");
+						}
+					} else {
+						// The scroll yields no more data. We are done
+						break;
+					}
+				} finally {
+					// Clearing used scroll in order to free memory in ES
+					client.clearScroll(currentScroll).sync();
+				}
+
+			}
+		}
+		return versions;
+	}
+
+	protected void processHits(JsonArray hits, Map<String, String> versions) {
+		for (int i = 0; i < hits.size(); i++) {
+			JsonObject hit = hits.getJsonObject(i);
+			JsonObject source = hit.getJsonObject("_source");
+			String uuid = source.getString("uuid");
+			String version = source.getString("version");
+			versions.put(uuid, version);
+		}
 	}
 
 	@Override

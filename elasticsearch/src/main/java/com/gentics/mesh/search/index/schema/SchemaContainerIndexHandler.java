@@ -19,6 +19,8 @@ import com.gentics.mesh.search.SearchProvider;
 import com.gentics.mesh.search.index.MappingProvider;
 import com.gentics.mesh.search.index.entry.AbstractIndexHandler;
 
+import io.reactivex.Completable;
+
 /**
  * Handler for schema container index.
  */
@@ -59,6 +61,13 @@ public class SchemaContainerIndexHandler extends AbstractIndexHandler<SchemaCont
 	@Override
 	public MappingProvider getMappingProvider() {
 		return mappingProvider;
+	}
+	
+	@Override
+	public Completable syncIndices() {
+		return Completable.defer(() -> {
+			return diffAndSync(SchemaContainer.composeIndexName());
+		});
 	}
 
 	@Override

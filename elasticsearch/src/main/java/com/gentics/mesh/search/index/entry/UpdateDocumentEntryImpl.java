@@ -30,10 +30,26 @@ public class UpdateDocumentEntryImpl extends AbstractEntry<GenericEntryContext> 
 	 * @param context
 	 * @param action
 	 */
-	public UpdateDocumentEntryImpl(IndexHandler<?> indexHandler, IndexableElement element, GenericEntryContext context, SearchQueueEntryAction action) {
+	public UpdateDocumentEntryImpl(IndexHandler<?> indexHandler, IndexableElement element, GenericEntryContext context,
+		SearchQueueEntryAction action) {
 		super(action);
 		this.context = context;
 		this.elementUuid = element.getUuid();
+		this.indexHandler = indexHandler;
+	}
+
+	/**
+	 * Create a new batch entry.
+	 * 
+	 * @param indexHandler
+	 * @param element
+	 * @param context
+	 * @param action
+	 */
+	public UpdateDocumentEntryImpl(IndexHandler<?> indexHandler, String uuid, GenericEntryContext context, SearchQueueEntryAction action) {
+		super(action);
+		this.context = context;
+		this.elementUuid = uuid;
 		this.indexHandler = indexHandler;
 	}
 
@@ -67,6 +83,6 @@ public class UpdateDocumentEntryImpl extends AbstractEntry<GenericEntryContext> 
 	@Override
 	public String toString() {
 		return "Update Entry {" + getElementAction() + "} for {" + elementUuid + "} and handler {" + indexHandler.getClass().getSimpleName()
-				+ "} with context {" + getContext().toString() + "}";
+			+ "} with context {" + getContext().toString() + "}";
 	}
 }

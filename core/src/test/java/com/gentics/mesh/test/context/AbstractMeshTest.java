@@ -99,7 +99,7 @@ public abstract class AbstractMeshTest implements TestHelperMethods, TestHttpMet
 		MeshInternal.get().searchProvider().clear().blockingAwait();
 		for (IndexHandler<?> handler : MeshInternal.get().indexHandlerRegistry().getHandlers()) {
 			handler.init().blockingAwait();
-			handler.reindexAll().blockingAwait();
+			handler.syncIndices().blockingAwait();
 		}
 	}
 

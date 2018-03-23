@@ -18,6 +18,8 @@ import com.gentics.mesh.graphdb.spi.Database;
 import com.gentics.mesh.search.SearchProvider;
 import com.gentics.mesh.search.index.entry.AbstractIndexHandler;
 
+import io.reactivex.Completable;
+
 /**
  * Handler for the elastic search group index.
  */
@@ -75,6 +77,13 @@ public class GroupIndexHandler extends AbstractIndexHandler<Group> {
 	@Override
 	public RootVertex<Group> getRootVertex() {
 		return boot.meshRoot().getGroupRoot();
+	}
+
+	@Override
+	public Completable syncIndices() {
+		return Completable.defer(() -> {
+			return diffAndSync(Group.composeIndexName());
+		});
 	}
 
 }
