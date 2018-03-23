@@ -10,17 +10,18 @@ import com.gentics.mesh.core.rest.common.RestModel;
 public class SearchStatusResponse implements RestModel {
 
 	@JsonProperty(required = false)
-	@JsonPropertyDescription("Flag which indicates whether a reindex operation is currently running.")
-	boolean reindexRunning = false;
+	@JsonPropertyDescription("Flag which indicates whether a index synchronization is currently running.")
+	boolean indexSyncRunning = false;
 
 	public SearchStatusResponse() {
 	}
 
-	public boolean isReindexRunning() {
-		return reindexRunning;
+	public boolean isIndexSyncRunning() {
+		return indexSyncRunning;
 	}
 
-	public void setReindexRunning(boolean reindexRunning) {
-		this.reindexRunning = reindexRunning;
+	public void setIndexSyncRunning(boolean indexSyncRunning) {
+		this.indexSyncRunning = indexSyncRunning;
 	}
+
 }

@@ -1,9 +1,13 @@
 package com.gentics.mesh.search;
 
+import static com.gentics.mesh.Events.INDEX_SYNC_EVENT;
+
 import org.junit.Test;
 
-import com.gentics.mesh.core.data.User;
+import com.codahale.metrics.SharedMetricRegistries;
+import com.gentics.mesh.Mesh;
 import com.gentics.mesh.search.impl.ElasticSearchProvider;
+import com.gentics.mesh.search.verticle.ElasticsearchSyncVerticle;
 import com.gentics.mesh.test.TestSize;
 import com.gentics.mesh.test.context.AbstractMeshTest;
 import com.gentics.mesh.test.context.MeshTestSetting;
@@ -34,28 +38,33 @@ public class ElasticsearchReindexTest extends AbstractMeshTest {
 			recreateIndices();
 		}
 
-		// call(() -> client().invokeReindex());
-		provider.invokeReindex().blockingAwait();
-		System.out.println("--------------");
-		provider.invokeReindex().blockingAwait();
+		waitForEvent(INDEX_SYNC_EVENT, ElasticsearchSyncVerticle::invokeSync);
+		System.out.println(SharedMetricRegistries.getOrCreate("mesh").getMeters().get("index.sync").getCount());
+		System.out.println(Mesh.mesh().metrics().getMetricsSnapshot("index.sync").encodePrettily());
 
-		provider.deleteDocument(User.composeIndexName(), userUuid()).blockingAwait();
-		provider.refreshIndex("_all").blockingAwait();
-		System.out.println("--------------");
-		provider.invokeReindex().blockingAwait();
-		try (Tx tx = tx()) {
-			user().setName("blar");
-			tx.success();
-		}
-		System.out.println("--------------");
-		provider.invokeReindex().blockingAwait();
-
-		try (Tx tx = tx()) {
-			user().getElement().remove();
-			tx.success();
-		}
-		System.out.println("--------------");
-		provider.invokeReindex().blockingAwait();
+		// System.out.println("--------------");
+		// waitForEvent(INDEX_SYNC_EVENT, ElasticsearchSyncVerticle::invokeSync);
+		//
+		// provider.deleteDocument(User.composeIndexName(), userUuid()).blockingAwait();
+		// provider.refreshIndex("_all").blockingAwait();
+		// System.out.println("--------------");
+		//
+		// waitForEvent(INDEX_SYNC_EVENT, ElasticsearchSyncVerticle::invokeSync);
+		//
+		// try (Tx tx = tx()) {
+		// user().setName("blar");
+		// tx.success();
+		// }
+		// System.out.println("--------------");
+		// waitForEvent(INDEX_SYNC_EVENT, ElasticsearchSyncVerticle::invokeSync);
+		//
+		// try (Tx tx = tx()) {
+		// user().getElement().remove();
+		// tx.success();
+		// }
+		// System.out.println("--------------");
+		// waitForEvent(INDEX_SYNC_EVENT, ElasticsearchSyncVerticle::invokeSync);
 
 	}
+
 }

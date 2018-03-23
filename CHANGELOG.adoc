@@ -10,8 +10,15 @@
 
 = Gentics Mesh Changelog
 
-[[v0.17.4]]
-== 0.17.4 (TBD)
+
+
+[[v0.18.0]]
+== 0.18.0 (TBD)
+
+CAUTION: Search: The  `/api/v1/search/reindex` endpoint was replaced by `/api/v1/search/indexSync`.
+
+icon:plus[] The `/api/v1/search/indexSync` endpoint can now be used to trigger the differential synchronization of search indices. 
+            The indices will no longer be dropped and repopulated. Instead only needed actions will be executed to sync the index with the Gentics Mesh data.
 
 icon:plus[] Docker: A new volume location for the data directory of the embedded elasticsearch has been added.
                     You can now use the `/elasticsearch/data` folder to mount your elasticsearch data files. link:https://github.com/gentics/mesh/issues/348[#348]

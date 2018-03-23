@@ -93,6 +93,8 @@ import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.ext.dropwizard.DropwizardMetricsOptions;
+import io.vertx.ext.dropwizard.MetricsService;
 import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager;
 
 /**
@@ -311,13 +313,17 @@ public class BootstrapInitializerImpl implements BootstrapInitializer {
 		vertxOptions.setClustered(options.getClusterOptions().isEnabled());
 		vertxOptions.setWorkerPoolSize(options.getVertxOptions().getWorkerPoolSize());
 		vertxOptions.setEventLoopPoolSize(options.getVertxOptions().getEventPoolSize());
+		vertxOptions.setMetricsOptions(new DropwizardMetricsOptions().setEnabled(true).setRegistryName("mesh"));
+		Vertx vertx = null;
 		if (vertxOptions.isClustered()) {
 			log.info("Creating clustered Vert.x instance");
-			mesh.setVertx(createClusteredVertx(options, vertxOptions, (HazelcastInstance) db.getHazelcast()));
+			vertx = createClusteredVertx(options, vertxOptions, (HazelcastInstance) db.getHazelcast());
 		} else {
 			log.info("Creating non-clustered Vert.x instance");
-			mesh.setVertx(Vertx.vertx(vertxOptions));
+			vertx =Vertx.vertx(vertxOptions);
 		}
+		mesh.setVertx(vertx);
+		mesh.setMetricsService(MetricsService.create(vertx));
 	}
 
 	/**
