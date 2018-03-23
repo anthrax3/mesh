@@ -137,29 +137,20 @@ public class BootstrapInitializerImpl implements BootstrapInitializer {
 
 	private List<String> allLanguageTags = new ArrayList<>();
 
-	private final ReindexAction REINDEX_ACTION = (() -> {
+	private final ReindexAction SYNC_INDEX_ACTION = (() -> {
 
 		// Init the classes / indices
 		DatabaseHelper.init(db);
 
-		// TODO replace this logic with the differential ES sync
-
-		// 1. Drop all indices
-		log.info("Clearing all indices..");
-		searchProvider.clear().blockingAwait();
-
-		log.info("Clearing indices completed.");
-
-		// 2. Recreate indices + mappings and reindex the documents
+		// Ensure indices are setup and sync the documents
 		IndexHandlerRegistry registry = indexHandlerRegistry.get();
 		for (IndexHandler<?> handler : registry.getHandlers()) {
 			String handlerName = handler.getClass().getSimpleName();
-			log.info("Invoking reindex on handler {" + handlerName + "}. This may take some time..");
-			handler.init().blockingAwait();
 			try (Tx tx = db.tx()) {
-				handler.syncIndices().blockingAwait();
+				log.info("Invoking index sync on handler {" + handlerName + "}. This may take some time..");
+				handler.init().andThen(handler.syncIndices()).blockingAwait();
+				log.info("Index sync on handler {" + handlerName + "} completed.");
 			}
-			log.info("Reindex on handler {" + handlerName + "} completed.");
 		}
 	});
 
@@ -431,7 +422,7 @@ public class BootstrapInitializerImpl implements BootstrapInitializer {
 
 	@Override
 	public void reindexAll() {
-		REINDEX_ACTION.invoke();
+		SYNC_INDEX_ACTION.invoke();
 	}
 
 	@Override
@@ -515,7 +506,7 @@ public class BootstrapInitializerImpl implements BootstrapInitializer {
 	public void invokeChangelog() {
 		log.info("Invoking database changelog check...");
 		ChangelogSystem cls = new ChangelogSystem(db);
-		if (!cls.applyChanges(REINDEX_ACTION)) {
+		if (!cls.applyChanges(SYNC_INDEX_ACTION)) {
 			throw new RuntimeException("The changelog could not be applied successfully. See log above.");
 		}
 		log.info("Changelog completed.");

@@ -82,7 +82,8 @@ public class UpdateDocumentEntryImpl extends AbstractEntry<GenericEntryContext> 
 
 	@Override
 	public String toString() {
+		String context = getContext() != null ? getContext().toString() : "null";
 		return "Update Entry {" + getElementAction() + "} for {" + elementUuid + "} and handler {" + indexHandler.getClass().getSimpleName()
-			+ "} with context {" + getContext().toString() + "}";
+			+ "} with context {" + context + "}";
 	}
 }

@@ -185,11 +185,17 @@ public abstract class AbstractIndexHandler<T extends MeshCoreVertex<?, T>> imple
 			// 3. Diff the maps
 			MapDifference<String, String> diff = Maps.difference(sourceVersions, sinkVersions);
 			if (diff.areEqual()) {
+				log.info("No diff detected. Index {" + indexName + "} is in sync.");
 				return Completable.complete();
 			}
+
 			Set<String> needInsertionInES = diff.entriesOnlyOnLeft().keySet();
 			Set<String> needRemovalInES = diff.entriesOnlyOnRight().keySet();
 			Set<String> needUpdate = diff.entriesDiffering().keySet();
+
+			log.info("Pending insertions on {" + indexName + "}:" + needInsertionInES.size());
+			log.info("Pending removals on {" + indexName + "}:" + needRemovalInES.size());
+			log.info("Pending updates on {" + indexName + "}:" + needUpdate.size());
 
 			// 4. Create the SQB's
 			SearchQueueBatch storeBatch = searchQueue.create();

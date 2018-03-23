@@ -2,6 +2,7 @@ package com.gentics.mesh.search;
 
 import org.junit.Test;
 
+import com.gentics.mesh.core.data.User;
 import com.gentics.mesh.search.impl.ElasticSearchProvider;
 import com.gentics.mesh.test.TestSize;
 import com.gentics.mesh.test.context.AbstractMeshTest;
@@ -33,9 +34,28 @@ public class ElasticsearchReindexTest extends AbstractMeshTest {
 			recreateIndices();
 		}
 
-		//call(() -> client().invokeReindex());
+		// call(() -> client().invokeReindex());
 		provider.invokeReindex().blockingAwait();
 		System.out.println("--------------");
 		provider.invokeReindex().blockingAwait();
+
+		provider.deleteDocument(User.composeIndexName(), userUuid()).blockingAwait();
+		provider.refreshIndex("_all").blockingAwait();
+		System.out.println("--------------");
+		provider.invokeReindex().blockingAwait();
+		try (Tx tx = tx()) {
+			user().setName("blar");
+			tx.success();
+		}
+		System.out.println("--------------");
+		provider.invokeReindex().blockingAwait();
+
+		try (Tx tx = tx()) {
+			user().getElement().remove();
+			tx.success();
+		}
+		System.out.println("--------------");
+		provider.invokeReindex().blockingAwait();
+
 	}
 }

@@ -463,11 +463,7 @@ public class ElasticSearchProvider implements SearchProvider {
 						log.error("Request failed {" + msg + "}", error);
 					}
 				});
-			if (ignoreError) {
-				return t.onErrorComplete();
-			} else {
-				return t;
-			}
+			return ignoreError ? t.onErrorComplete() : t;
 		};
 	}
 
